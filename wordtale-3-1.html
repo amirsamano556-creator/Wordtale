@@ -1,0 +1,1454 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WORDTALE — English Battle</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323:wght@400&display=swap');
+
+  :root {
+    --yellow: #FFE000;
+    --red: #FF3333;
+    --white: #FFFFFF;
+    --bg: #000000;
+    --box: #0a0a0f;
+    --border: #FFFFFF;
+    --hp-green: #00FF66;
+    --hp-red: #FF2222;
+    --easy: #00FFAA;
+    --medium: #FFD700;
+    --hard: #FF4444;
+    --soul: #3366FF;
+    --combo: #FF00FF;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--white);
+    font-family: 'Press Start 2P', monospace;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    overflow: hidden;
+    user-select: none;
+    background-image: radial-gradient(ellipse at 50% 50%, #0a0020 0%, #000000 70%);
+  }
+
+  body::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.08) 2px, rgba(0,0,0,0.08) 4px);
+    pointer-events: none;
+    z-index: 9999;
+  }
+
+  #game-container {
+    width: 600px;
+    max-width: 98vw;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    position: relative;
+  }
+
+  /* ─── TITLE ─── */
+  #title-screen {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+    animation: fadeIn 0.6s ease;
+  }
+
+  .title-stars { position: fixed; inset: 0; pointer-events: none; overflow: hidden; z-index: 0; }
+  .star {
+    position: absolute; width: 2px; height: 2px;
+    background: #fff; border-radius: 50%;
+    animation: twinkle var(--t) infinite;
+  }
+  @keyframes twinkle { 0%,100%{opacity:0.1;transform:scale(1)} 50%{opacity:1;transform:scale(1.5)} }
+
+  .title-logo {
+    font-size: 32px; color: var(--yellow);
+    text-shadow: 4px 4px 0px #AA9000, 0 0 40px #FFE00099, 0 0 80px #FFE00033;
+    letter-spacing: 6px; text-align: center; line-height: 1.5;
+    position: relative; z-index: 1;
+    animation: titlePulse 2s ease-in-out infinite;
+  }
+  @keyframes titlePulse {
+    0%,100%{text-shadow:4px 4px 0px #AA9000,0 0 40px #FFE00099,0 0 80px #FFE00033}
+    50%{text-shadow:4px 4px 0px #AA9000,0 0 60px #FFE000cc,0 0 120px #FFE00066}
+  }
+
+  .title-sub { font-family: 'VT323', monospace; font-size: 22px; color: #aaa; text-align: center; position: relative; z-index: 1; }
+
+  .title-instructions {
+    font-family: 'VT323', monospace; font-size: 17px; color: #666;
+    text-align: center; line-height: 1.8;
+    border: 1px solid #222; padding: 12px 16px; background: #080808;
+    position: relative; z-index: 1;
+  }
+
+  .start-btn {
+    font-family: 'Press Start 2P', monospace; font-size: 11px;
+    color: #000; background: var(--yellow); border: none;
+    padding: 14px 28px; cursor: pointer;
+    box-shadow: 4px 4px 0px #AA9000, 0 0 20px #FFE00055;
+    transition: transform 0.08s, box-shadow 0.08s;
+    animation: btnPulse 1.2s infinite;
+    position: relative; z-index: 1;
+  }
+  .start-btn:hover { transform: translate(-2px,-2px); box-shadow: 6px 6px 0px #AA9000, 0 0 30px #FFE00088; }
+  .start-btn:active { transform: translate(2px,2px); box-shadow: 2px 2px 0px #AA9000; }
+  @keyframes btnPulse { 0%,100%{opacity:1} 50%{opacity:0.75} }
+  @keyframes fadeIn { from{opacity:0;transform:translateY(12px)} to{opacity:1;transform:translateY(0)} }
+
+  /* ─── BATTLE ─── */
+  #battle-screen { display: none; flex-direction: column; gap: 10px; animation: fadeIn 0.3s; }
+
+  /* Enemy area */
+  #enemy-area {
+    display: flex; align-items: center; justify-content: center;
+    height: 140px; border: 3px solid var(--border);
+    background: var(--box); position: relative; overflow: hidden;
+  }
+  #enemy-area::before {
+    content: ''; position: absolute; inset: 0;
+    background:
+      repeating-linear-gradient(0deg,transparent,transparent 20px,#ffffff05 20px,#ffffff05 21px),
+      repeating-linear-gradient(90deg,transparent,transparent 20px,#ffffff05 20px,#ffffff05 21px);
+  }
+  #enemy-sprite {
+    font-size: 60px; position: relative; z-index: 1;
+    animation: enemyIdle 1.8s ease-in-out infinite;
+    filter: drop-shadow(0 0 12px #fff6);
+  }
+  @keyframes enemyIdle {
+    0%,100%{transform:translateY(0) rotate(0deg)}
+    25%{transform:translateY(-4px) rotate(-1deg)}
+    75%{transform:translateY(-7px) rotate(1deg)}
+  }
+  #enemy-name { position: absolute; top: 8px; left: 12px; font-size: 8px; color: var(--yellow); z-index: 2; }
+  #level-badge { position: absolute; top: 8px; right: 12px; font-size: 7px; color: #555; z-index: 2; }
+  #enemy-hp-bar { position: absolute; bottom: 8px; left: 12px; right: 12px; z-index: 2; }
+  .hp-label { font-size: 6px; color: #666; margin-bottom: 3px; }
+  .hp-track { height: 9px; background: #111; border: 2px solid #333; position: relative; }
+  .hp-fill {
+    height: 100%; background: var(--hp-green);
+    transition: width 0.5s cubic-bezier(0.4,0,0.2,1), background 0.4s;
+    overflow: hidden; position: relative;
+  }
+  .hp-fill::after {
+    content: ''; position: absolute; inset: 0;
+    background: linear-gradient(90deg,transparent,rgba(255,255,255,0.2),transparent);
+    animation: hpShimmer 2s infinite;
+  }
+  @keyframes hpShimmer{0%{transform:translateX(-100%)}100%{transform:translateX(100%)}}
+  .hp-fill.low { background: var(--hp-red); }
+  .hp-fill.low::after { display: none; }
+
+  /* Dialogue */
+  #dialogue-box {
+    border: 3px solid var(--border); background: var(--box);
+    padding: 12px; min-height: 70px;
+    font-family: 'VT323', monospace; font-size: 19px; line-height: 1.5;
+  }
+  #dialogue-speaker { font-family: 'Press Start 2P', monospace; font-size: 7px; color: var(--yellow); margin-bottom: 5px; }
+  .typing-cursor {
+    display: inline-block; width: 9px; height: 16px; background: var(--yellow);
+    margin-left: 2px; animation: blink 0.6s infinite; vertical-align: bottom;
+  }
+  @keyframes blink{0%,100%{opacity:1}50%{opacity:0}}
+
+  /* Stats bar */
+  #stats-bar { display: flex; align-items: center; gap: 10px; padding: 6px 0; font-size: 7px; }
+  #player-name { color: var(--yellow); }
+  #hp-display  { color: var(--hp-green); white-space: nowrap; }
+  .hp-track-player { flex: 1; height: 9px; background: #222; border: 2px solid #333; }
+  #player-hp-fill { height: 100%; background: var(--hp-green); transition: width 0.4s ease; }
+  #score-display { color: #555; white-space: nowrap; }
+  .hp-track.pulse { animation: hpPulse 0.8s infinite; }
+  @keyframes hpPulse{0%,100%{box-shadow:none}50%{box-shadow:0 0 12px #FF2222}}
+
+  /* Action buttons */
+  #action-btns { display: flex; gap: 8px; }
+  .action-btn {
+    font-family: 'Press Start 2P', monospace; font-size: 8px;
+    padding: 10px 14px; cursor: pointer; border: 2px solid;
+    background: #000; transition: transform 0.08s, box-shadow 0.08s, background 0.1s;
+    flex: 1; text-align: center;
+  }
+  .action-btn:hover { transform: translate(-1px,-2px); }
+  .action-btn:active { transform: translate(1px,1px); }
+  #btn-fight { color: #FF6666; border-color: #FF6666; }
+  #btn-fight:hover { background: #1a0000; }
+  #btn-act   { color: #AAFFAA; border-color: #AAFFAA; }
+  #btn-act:hover { background: #001a00; }
+  #btn-mercy { color: #FFAAFF; border-color: #FFAAFF; }
+  #btn-mercy:hover { background: #1a001a; }
+
+  /* ─── VIEW: DODGE ─── */
+  #soul-box {
+    border: 3px solid var(--border); background: #000;
+    height: 200px; position: relative; overflow: hidden;
+  }
+  #soul-box.danger { border-color: #FF4444; box-shadow: 0 0 20px #FF444466 inset; }
+  #soul {
+    position: absolute; width: 20px; height: 20px; background: var(--soul);
+    clip-path: polygon(50% 0%,0% 60%,20% 60%,20% 100%,80% 100%,80% 60%,100% 60%);
+    filter: drop-shadow(0 0 8px #3366FF);
+    transition: left 0.05s, top 0.05s; z-index: 10;
+  }
+  #soul.invincible { animation: invincFlash 0.15s infinite; }
+  @keyframes invincFlash{0%,100%{opacity:1}50%{opacity:0.2}}
+  .projectile { position: absolute; border-radius: 2px; z-index: 5; }
+  .proj-word {
+    position: absolute; font-family: 'Press Start 2P', monospace; font-size: 7px;
+    white-space: nowrap; z-index: 6; pointer-events: none;
+    padding: 3px 5px; border: 1px solid currentColor; background: rgba(0,0,0,0.7);
+  }
+  #dodge-hint {
+    font-family: 'VT323', monospace; font-size: 16px; color: #333;
+    text-align: center; padding: 4px 0;
+  }
+  #dodge-taunt {
+    border: 3px solid var(--border); border-bottom: none;
+    background: var(--box); padding: 10px 12px;
+    font-family: 'VT323', monospace; font-size: 18px;
+    color: #ccc; min-height: 52px;
+  }
+
+  /* ─── VIEW: SWING ─── */
+  #swing-header {
+    border: 3px solid var(--border); border-bottom: none;
+    background: var(--box); padding: 12px 14px; text-align: center;
+  }
+  #swing-diff-badge {
+    font-family: 'Press Start 2P', monospace; font-size: 11px;
+    color: var(--easy); display: block; margin-bottom: 6px;
+    text-shadow: 0 0 10px currentColor;
+  }
+  #swing-sub { font-family: 'VT323', monospace; font-size: 16px; color: #555; }
+
+  #swing-track {
+    height: 80px; background: #050505; border: 3px solid var(--border);
+    position: relative; overflow: hidden; cursor: pointer;
+    touch-action: manipulation;
+  }
+  #swing-track:active { background: #0a0a0a; }
+  .zone { position: absolute; top: 0; height: 100%; }
+  #zone-hard-left  { left: 0;   width: 18%; background: #FF444412; border-right: 2px dashed #FF444455; }
+  #zone-med-left   { left: 18%; width: 14%; background: #FFD70012; border-right: 2px dashed #FFD70055; }
+  #zone-easy       { left: 32%; width: 36%; background: #00FFAA10; }
+  #zone-med-right  { left: 68%; width: 14%; background: #FFD70012; border-left: 2px dashed #FFD70055; }
+  #zone-hard-right { left: 82%; width: 18%; background: #FF444412; border-left: 2px dashed #FF444455; }
+  .zone-label {
+    position: absolute; top: 50%; transform: translateY(-50%);
+    font-family: 'VT323', monospace; font-size: 15px;
+    pointer-events: none; white-space: nowrap;
+  }
+  #zlabel-hl{left: 1%; color:var(--hard)}
+  #zlabel-ml{left:20%; color:var(--medium)}
+  #zlabel-e {left:42%; color:var(--easy)}
+  #zlabel-mr{left:69%; color:var(--medium)}
+  #zlabel-hr{left:83%; color:var(--hard)}
+  #swing-cursor {
+    position: absolute; top: 0; height: 100%; width: 6px;
+    background: var(--yellow);
+    box-shadow: 0 0 14px var(--yellow), 0 0 28px #FFE00055;
+    pointer-events: none;
+  }
+  #strike-flash {
+    position: absolute; inset: 0; background: #FFE000;
+    opacity: 0; pointer-events: none; z-index: 20;
+  }
+  #swing-tap-hint {
+    border: 3px solid var(--border); border-top: none;
+    background: var(--box); padding: 10px 14px;
+    font-family: 'VT323', monospace; font-size: 17px; color: #444;
+    text-align: center;
+  }
+
+  /* ─── VIEW: QUESTION ─── */
+  #q-header {
+    display: flex; align-items: center; gap: 10px;
+    padding: 8px 12px; background: var(--box);
+    border: 3px solid var(--border); border-bottom: none;
+  }
+  #q-diff-badge {
+    font-family: 'Press Start 2P', monospace; font-size: 8px;
+    color: var(--easy); white-space: nowrap; flex-shrink: 0;
+    text-shadow: 0 0 8px currentColor;
+  }
+  #answer-timer-bar { flex: 1; height: 6px; background: #111; border: 1px solid #333; }
+  #answer-timer-fill {
+    height: 100%; background: var(--yellow); width: 100%;
+    box-shadow: 0 0 6px var(--yellow);
+  }
+  #q-box {
+    border: 3px solid var(--border); border-bottom: none;
+    background: #050510; padding: 14px 16px;
+  }
+  #q-label { font-size: 7px; color: #444; margin-bottom: 8px; letter-spacing: 1px; }
+  #q-text {
+    font-family: 'VT323', monospace; font-size: 24px;
+    color: var(--yellow); line-height: 1.45;
+    text-shadow: 0 0 8px #FFE00033; white-space: pre-line;
+  }
+  #answer-opts {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 0;
+    border: 3px solid var(--border); border-top: none;
+  }
+  .ans-btn {
+    font-family: 'Press Start 2P', monospace; font-size: 8px; color: #ccc;
+    background: #0a0a0a; border: none;
+    border-top: 2px solid #1a1a1a; border-right: 2px solid #1a1a1a;
+    padding: 14px 10px; cursor: pointer; text-align: left;
+    transition: background 0.1s, color 0.1s; line-height: 1.7;
+    word-break: break-word; touch-action: manipulation; min-height: 60px;
+  }
+  .ans-btn:nth-child(even) { border-right: none; }
+  .ans-btn:nth-child(n+3) { border-top: 2px solid #1a1a1a; }
+  .ans-btn:hover  { background: #1a1a08; color: #fff; }
+  .ans-btn:active { background: #222200; }
+  .ans-btn.correct { background: #003311; color: var(--hp-green); border-color: #00FF6633; box-shadow: inset 0 0 12px #00FF6622; }
+  .ans-btn.wrong   { background: #220000; color: var(--red); border-color: #FF333333; }
+  .ans-btn:disabled { cursor: not-allowed; opacity: 0.7; }
+
+  /* Combo display */
+  #combo-display {
+    position: fixed; top: 20px; right: 20px;
+    font-family: 'Press Start 2P', monospace; font-size: 10px;
+    color: var(--combo); text-shadow: 0 0 12px var(--combo);
+    opacity: 0; transition: opacity 0.3s;
+    z-index: 300; pointer-events: none; text-align: right;
+  }
+  #combo-display.show { opacity: 1; }
+  #combo-num { font-size: 22px; display: block; }
+
+  /* Result flash */
+  #result-flash {
+    position: fixed; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 24px; text-align: center;
+    pointer-events: none; z-index: 400;
+    opacity: 0; transition: opacity 0.15s; padding: 20px;
+    flex-direction: column; gap: 8px;
+  }
+  #result-flash.show { opacity: 1; }
+  #result-flash.correct-flash { background: #00FF6618; color: #00FF66; }
+  #result-flash.wrong-flash   { background: #FF000018; color: #FF4444; }
+  #result-flash .flash-sub { font-family:'VT323',monospace; font-size:20px; }
+
+  /* Screen flash overlay */
+  #screen-flash { position: fixed; inset: 0; pointer-events: none; z-index: 500; opacity: 0; }
+
+  /* End screen */
+  #end-screen {
+    display: none; flex-direction: column; align-items: center;
+    gap: 20px; padding: 30px; border: 3px solid var(--border);
+    background: var(--box); text-align: center; animation: fadeIn 0.5s;
+  }
+  #end-title   { font-size: 20px; }
+  #end-message { font-family: 'VT323', monospace; font-size: 18px; color: #aaa; line-height: 1.6; white-space: pre-line; }
+  #end-score   { color: var(--yellow); font-size: 11px; }
+  #end-combo   { font-family: 'VT323', monospace; font-size: 16px; color: var(--combo); }
+
+  /* Damage number */
+  .dmg-num {
+    position: absolute; font-family: 'Press Start 2P', monospace;
+    font-size: 14px; pointer-events: none; z-index: 20;
+    animation: floatUp 1s ease forwards; text-shadow: 2px 2px 0 #000;
+  }
+  .dmg-num.big { font-size: 22px; }
+  @keyframes floatUp {
+    0%  { opacity:1; transform: translateY(0) scale(1.2); }
+    20% { transform: translateY(-10px) scale(1); }
+    100%{ opacity:0; transform: translateY(-50px) scale(0.7); }
+  }
+
+  /* Shakes */
+  .shake { animation: shakeAnim 0.3s ease !important; }
+  @keyframes shakeAnim {
+    0%,100%{transform:translateX(0)}
+    20%{transform:translateX(-8px)}
+    40%{transform:translateX(8px)}
+    60%{transform:translateX(-5px)}
+    80%{transform:translateX(5px)}
+  }
+  .screen-shake { animation: screenShake 0.3s ease; }
+  @keyframes screenShake {
+    0%,100%{transform:translate(0,0)}
+    20%{transform:translate(-4px,-2px)}
+    40%{transform:translate(4px,2px)}
+    60%{transform:translate(-3px,1px)}
+    80%{transform:translate(3px,-1px)}
+  }
+
+  /* Float word */
+  .float-word {
+    position: fixed; pointer-events: none; z-index: 600;
+    font-family: 'VT323', monospace; font-size: 18px;
+    animation: wordFloat 1.5s ease forwards;
+    text-shadow: 0 0 8px currentColor;
+  }
+  @keyframes wordFloat {
+    0%  {opacity:1; transform: translateY(0) scale(1)}
+    100%{opacity:0; transform: translateY(-80px) scale(0.5)}
+  }
+
+  /* Boss warning */
+  #boss-warning {
+    position: fixed; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+    background: rgba(0,0,0,0.85); z-index: 700;
+    font-size: 18px; color: var(--red);
+    text-shadow: 0 0 20px var(--red);
+    opacity: 0; pointer-events: none;
+    transition: opacity 0.3s;
+    flex-direction: column; gap: 16px; text-align: center;
+  }
+  #boss-warning.show { opacity: 1; pointer-events: all; }
+  #boss-warning .bw-sub { font-family: 'VT323', monospace; font-size: 22px; color: #aaa; }
+
+  /* Sound toggle */
+  #sound-toggle {
+    position: fixed; top: 12px; left: 12px; z-index: 800;
+    font-family: 'Press Start 2P', monospace; font-size: 8px;
+    color: #555; background: none; border: 1px solid #333;
+    padding: 6px 8px; cursor: pointer;
+    transition: color 0.2s, border-color 0.2s;
+  }
+  #sound-toggle:hover { color: #aaa; border-color: #666; }
+  #sound-toggle.on { color: var(--yellow); border-color: #664400; }
+
+  /* Streak badge */
+  #streak-badge {
+    position: fixed; top: 12px; right: 12px; z-index: 800;
+    font-family: 'Press Start 2P', monospace; font-size: 7px;
+    color: #333; opacity: 0; transition: opacity 0.3s; text-align: right;
+  }
+  #streak-badge.show { opacity: 1; }
+
+  /* Canvas */
+  #particle-canvas { position: fixed; inset: 0; pointer-events: none; z-index: 200; }
+</style>
+</head>
+<body>
+
+<canvas id="particle-canvas"></canvas>
+<div id="screen-flash"></div>
+<div id="result-flash"></div>
+<div id="boss-warning">
+  <div id="bw-title">⚠ WARNING ⚠</div>
+  <div class="bw-sub" id="bw-text"></div>
+</div>
+
+<button id="sound-toggle" class="on" onclick="toggleSound()">🔊 SFX</button>
+<div id="streak-badge"></div>
+<div id="combo-display"><span id="combo-num">0</span>COMBO!</div>
+
+<div class="title-stars" id="stars-bg"></div>
+
+<div id="game-container">
+
+  <!-- TITLE -->
+  <div id="title-screen">
+    <div class="title-logo">WORD★TALE</div>
+    <div class="title-sub">⚔ An English Language Battle ⚔</div>
+    <div class="title-instructions">
+      Strike at CENTER = Easy questions<br>
+      EDGES = Harder questions = MORE DAMAGE<br>
+      Answer correctly to hurt enemies!<br>
+      Dodge their attacks to survive!
+    </div>
+    <button class="start-btn" onclick="startGame()">▶ PRESS TO BEGIN</button>
+    <div style="font-family:'VT323',monospace;font-size:14px;color:#333;position:relative;z-index:1;">v3.0 — Fixed Question View</div>
+  </div>
+
+  <!-- BATTLE SCREEN -->
+  <div id="battle-screen">
+
+    <!-- Enemy area — always visible during battle -->
+    <div id="enemy-area">
+      <div id="enemy-name">⬛ ???</div>
+      <div id="level-badge"></div>
+      <div id="enemy-sprite">👾</div>
+      <div id="enemy-hp-bar">
+        <div class="hp-label">ENEMY HP</div>
+        <div class="hp-track" id="enemy-hp-track">
+          <div class="hp-fill" id="enemy-hp-fill" style="width:100%"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Stats bar — always visible -->
+    <div id="stats-bar">
+      <div id="player-name">YOU</div>
+      <div id="hp-display">❤ HP</div>
+      <div class="hp-track hp-track-player" id="player-hp-track">
+        <div id="player-hp-fill" style="width:100%"></div>
+      </div>
+      <div id="score-display">SCORE: 0</div>
+    </div>
+
+    <!-- ══ VIEW 1: MAIN ══ -->
+    <div id="view-main">
+      <div id="dialogue-box">
+        <div id="dialogue-speaker">* GRAMMAR SPIRIT</div>
+        <div id="dialogue-text">A wild GRAMMAR SPIRIT appeared!</div>
+      </div>
+      <div id="action-btns">
+        <button class="action-btn" id="btn-fight"  onclick="initFight()">⚔ FIGHT</button>
+        <button class="action-btn" id="btn-act"    onclick="doAct()">💬 CHECK</button>
+        <button class="action-btn" id="btn-mercy"  onclick="doMercy()">🕊 MERCY</button>
+      </div>
+    </div>
+
+    <!-- ══ VIEW 2: DODGE ══ -->
+    <div id="view-dodge" style="display:none;">
+      <div id="dodge-taunt"></div>
+      <div id="soul-box">
+        <div id="soul"></div>
+      </div>
+      <div id="dodge-hint">Arrow keys / WASD / drag to dodge!</div>
+    </div>
+
+    <!-- ══ VIEW 3: SWING ══ -->
+    <div id="view-swing" style="display:none;">
+      <div id="swing-header">
+        <div id="swing-diff-badge">★☆☆ EASY — ×1 DMG</div>
+        <div id="swing-sub">Tap CENTER=Easy · EDGES=Hard+Damage</div>
+      </div>
+      <div id="swing-track" onclick="swingStrike()">
+        <div class="zone" id="zone-hard-left"></div>
+        <div class="zone" id="zone-med-left"></div>
+        <div class="zone" id="zone-easy"></div>
+        <div class="zone" id="zone-med-right"></div>
+        <div class="zone" id="zone-hard-right"></div>
+        <div class="zone-label" id="zlabel-hl">HARD</div>
+        <div class="zone-label" id="zlabel-ml">MED</div>
+        <div class="zone-label" id="zlabel-e">EASY</div>
+        <div class="zone-label" id="zlabel-mr">MED</div>
+        <div class="zone-label" id="zlabel-hr">HARD</div>
+        <div id="swing-cursor"></div>
+        <div id="strike-flash"></div>
+      </div>
+      <div id="swing-tap-hint">TAP / CLICK / SPACE to strike!</div>
+    </div>
+
+    <!-- ══ VIEW 4: QUESTION ══ -->
+    <div id="view-question" style="display:none;">
+      <div id="q-header">
+        <span id="q-diff-badge">EASY ×1</span>
+        <div id="answer-timer-bar"><div id="answer-timer-fill"></div></div>
+      </div>
+      <div id="q-box">
+        <div id="q-label">QUESTION:</div>
+        <div id="q-text"></div>
+      </div>
+      <div id="answer-opts"></div>
+    </div>
+
+  </div>
+
+  <!-- END SCREEN -->
+  <div id="end-screen">
+    <div id="end-title"></div>
+    <div id="end-message"></div>
+    <div id="end-score"></div>
+    <div id="end-combo"></div>
+    <button class="start-btn" onclick="restartGame()">▶ PLAY AGAIN</button>
+  </div>
+
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════
+//  AUDIO ENGINE
+// ═══════════════════════════════════════════════════════════
+let audioCtx = null;
+let soundEnabled = true;
+
+function getAudio() {
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  return audioCtx;
+}
+
+function playTone(freq, type='square', vol=0.08, dur=0.12, decay=0.08) {
+  if (!soundEnabled) return;
+  try {
+    const ctx = getAudio();
+    const osc  = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain); gain.connect(ctx.destination);
+    osc.type = type; osc.frequency.value = freq;
+    gain.gain.setValueAtTime(vol, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + dur);
+    osc.start(ctx.currentTime); osc.stop(ctx.currentTime + dur + decay);
+  } catch(e){}
+}
+
+function playNoise(vol=0.1, dur=0.08) {
+  if (!soundEnabled) return;
+  try {
+    const ctx = getAudio();
+    const bufSize = ctx.sampleRate * dur;
+    const buf  = ctx.createBuffer(1, bufSize, ctx.sampleRate);
+    const data = buf.getChannelData(0);
+    for (let i = 0; i < bufSize; i++) data[i] = (Math.random()*2-1);
+    const src    = ctx.createBufferSource(); src.buffer = buf;
+    const gain   = ctx.createGain();
+    const filter = ctx.createBiquadFilter();
+    filter.type = 'bandpass'; filter.frequency.value = 1200; filter.Q.value = 0.5;
+    src.connect(filter); filter.connect(gain); gain.connect(ctx.destination);
+    gain.gain.setValueAtTime(vol, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + dur);
+    src.start(); src.stop(ctx.currentTime + dur + 0.02);
+  } catch(e){}
+}
+
+const SFX = {
+  menuMove:  () => playTone(440,'square',0.04,0.04),
+  menuSel:   () => { playTone(660,'square',0.06,0.06); playTone(880,'square',0.04,0.06); },
+  fight:     () => { playTone(220,'sawtooth',0.1,0.15); setTimeout(()=>playTone(180,'sawtooth',0.08,0.1),80); },
+  strike:    () => { playTone(550,'square',0.1,0.05); playNoise(0.12,0.05); },
+  correct:   () => { [523,659,784,1047].forEach((f,i)=>setTimeout(()=>playTone(f,'square',0.07,0.1),i*60)); },
+  wrong:     () => { [220,180,150].forEach((f,i)=>setTimeout(()=>playTone(f,'sawtooth',0.08,0.12),i*80)); },
+  hitEnemy:  () => { playNoise(0.18,0.08); playTone(300,'square',0.08,0.1); },
+  hitPlayer: () => { playNoise(0.2,0.12); playTone(150,'sawtooth',0.1,0.15); },
+  defeat:    () => { [784,659,523,440,349].forEach((f,i)=>setTimeout(()=>playTone(f,'square',0.06,0.15),i*80)); },
+  victory:   () => { const m=[523,523,523,440,523,587,659]; m.forEach((f,i)=>setTimeout(()=>playTone(f,'square',0.07,0.15),i*120)); },
+  gameOver:  () => { [440,330,220].forEach((f,i)=>setTimeout(()=>playTone(f,'sawtooth',0.1,0.3),i*200)); },
+  combo:     (n) => { const f=440+n*30; playTone(f,'square',0.06,0.08); playTone(f*1.5,'square',0.04,0.06); },
+  dodge:     () => playTone(660,'triangle',0.04,0.04),
+  mercy:     () => { playTone(523,'sine',0.06,0.2); playTone(659,'sine',0.04,0.2); },
+  boss:      () => { for(let i=0;i<3;i++) setTimeout(()=>{playTone(110,'sawtooth',0.12,0.2);playNoise(0.1,0.1);},i*300); },
+  dialogue:  () => playTone(800,'square',0.02,0.02),
+};
+
+function toggleSound() {
+  soundEnabled = !soundEnabled;
+  const btn = document.getElementById('sound-toggle');
+  btn.textContent = soundEnabled ? '🔊 SFX' : '🔇 SFX';
+  btn.className   = soundEnabled ? 'on' : '';
+}
+
+// ═══════════════════════════════════════════════════════════
+//  PARTICLES
+// ═══════════════════════════════════════════════════════════
+const canvas = document.getElementById('particle-canvas');
+const ctx2   = canvas.getContext('2d');
+let particles = [];
+
+function resizeCanvas() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
+resizeCanvas();
+window.addEventListener('resize', resizeCanvas);
+
+function spawnParticles(x, y, color, count=12, speed=4) {
+  for (let i = 0; i < count; i++) {
+    const angle = (Math.PI*2/count)*i + Math.random()*0.5;
+    const spd   = speed * (0.5 + Math.random());
+    particles.push({ x, y, vx:Math.cos(angle)*spd, vy:Math.sin(angle)*spd-speed*0.3,
+      life:1, decay:0.03+Math.random()*0.03, size:3+Math.random()*4, color,
+      shape: Math.random()>0.5?'rect':'circle' });
+  }
+}
+
+function spawnExplosion(x, y, color='#FFE000', count=20) {
+  spawnParticles(x, y, color, count, 6);
+  for(let i=0;i<8;i++){
+    const angle=Math.random()*Math.PI*2, spd=8+Math.random()*6;
+    particles.push({ x,y,vx:Math.cos(angle)*spd,vy:Math.sin(angle)*spd,
+      life:1,decay:0.05,size:2,color:'#ffffff',shape:'spark',trail:[] });
+  }
+}
+
+function spawnTextParticle(x, y, text, color) {
+  particles.push({ x,y,vx:(Math.random()-0.5)*2,vy:-3-Math.random()*2,
+    life:1,decay:0.02,text,color,size:10,shape:'text' });
+}
+
+function updateParticles() {
+  ctx2.clearRect(0, 0, canvas.width, canvas.height);
+  particles = particles.filter(p => {
+    p.life -= p.decay;
+    if (p.life <= 0) return false;
+    if (p.shape==='spark'&&p.trail) { p.trail.push({x:p.x,y:p.y,life:p.life}); if(p.trail.length>6)p.trail.shift(); }
+    p.x += p.vx; p.vy += 0.15; p.y += p.vy;
+    ctx2.globalAlpha = p.life;
+    if (p.shape==='text') {
+      ctx2.fillStyle=p.color; ctx2.font=`bold ${p.size}px "Press Start 2P",monospace`;
+      ctx2.fillText(p.text,p.x,p.y);
+    } else if (p.shape==='spark'&&p.trail) {
+      p.trail.forEach((pt,i)=>{ ctx2.globalAlpha=(i/p.trail.length)*p.life*0.5; ctx2.fillStyle='#fff'; ctx2.fillRect(pt.x-1,pt.y-1,2,2); });
+      ctx2.globalAlpha=p.life; ctx2.fillStyle=p.color; ctx2.fillRect(p.x-p.size/2,p.y-p.size/2,p.size,p.size);
+    } else if (p.shape==='rect') {
+      ctx2.fillStyle=p.color; ctx2.fillRect(p.x-p.size/2,p.y-p.size/2,p.size,p.size);
+    } else {
+      ctx2.fillStyle=p.color; ctx2.beginPath(); ctx2.arc(p.x,p.y,p.size/2,0,Math.PI*2); ctx2.fill();
+    }
+    ctx2.globalAlpha=1; return true;
+  });
+  requestAnimationFrame(updateParticles);
+}
+updateParticles();
+
+// ═══════════════════════════════════════════════════════════
+//  SCREEN EFFECTS
+// ═══════════════════════════════════════════════════════════
+function screenFlash(color='#ffffff', dur=150) {
+  const el = document.getElementById('screen-flash');
+  el.style.background=color; el.style.opacity='0.4';
+  setTimeout(()=>{ el.style.transition='opacity 0.2s'; el.style.opacity='0'; },dur);
+  setTimeout(()=>{ el.style.transition=''; },dur+200);
+}
+
+function shakeContainer() {
+  const gc = document.getElementById('game-container');
+  gc.classList.remove('screen-shake'); void gc.offsetWidth; gc.classList.add('screen-shake');
+}
+
+// ═══════════════════════════════════════════════════════════
+//  TYPING EFFECT
+// ═══════════════════════════════════════════════════════════
+let typingTimeout = null;
+function typeText(el, text, speed=30, cb) {
+  if (typingTimeout) clearTimeout(typingTimeout);
+  el.innerHTML=''; let i=0;
+  const cursor=document.createElement('span'); cursor.className='typing-cursor';
+  const type=()=>{
+    if(i<text.length){
+      el.textContent=text.slice(0,i+1); el.appendChild(cursor);
+      if(text[i]!==' ')SFX.dialogue(); i++;
+      typingTimeout=setTimeout(type,speed+(text[i-1]==='\n'?200:0));
+    }else{ cursor.remove(); if(cb)setTimeout(cb,300); }
+  };
+  type();
+}
+
+// ═══════════════════════════════════════════════════════════
+//  STARS
+// ═══════════════════════════════════════════════════════════
+function initStars() {
+  const bg=document.getElementById('stars-bg'); bg.innerHTML='';
+  for(let i=0;i<60;i++){
+    const s=document.createElement('div'); s.className='star';
+    s.style.cssText=`left:${Math.random()*100}%;top:${Math.random()*100}%;--t:${1.5+Math.random()*3}s;animation-delay:${Math.random()*3}s;width:${1+Math.random()*2}px;height:${1+Math.random()*2}px;opacity:${0.1+Math.random()*0.5}`;
+    bg.appendChild(s);
+  }
+}
+initStars();
+
+// ═══════════════════════════════════════════════════════════
+//  QUESTIONS
+// ═══════════════════════════════════════════════════════════
+const QUESTIONS = {
+  easy: [
+    { q:"What is the plural of 'cat'?", opts:["cats","cates","cat's","catses"], ans:0 },
+    { q:"Choose the correct verb:\nShe ___ happy.", opts:["is","are","am","be"], ans:0 },
+    { q:"What is the opposite of 'hot'?", opts:["cold","bold","told","gold"], ans:0 },
+    { q:"Fill in the blank:\nI ___ a student.", opts:["am","is","are","be"], ans:0 },
+    { q:"Which is a fruit?", opts:["apple","table","chair","cloud"], ans:0 },
+    { q:"What is the past tense of 'go'?", opts:["went","goed","gone","go"], ans:0 },
+    { q:"She ___ a book right now.", opts:["is reading","reads","read","readed"], ans:0 },
+    { q:"Which animal can fly?", opts:["eagle","dog","fish","snake"], ans:0 },
+    { q:"The baby ___ every night.", opts:["cries","crys","cryes","cried"], ans:0 },
+    { q:"What is the color of grass?", opts:["green","gray","brown","blue"], ans:0 },
+  ],
+  medium: [
+    { q:"Choose the correct sentence:", opts:["Neither of them are ready.","Neither of them is ready.","Neither of they is ready.","Neither them are ready."], ans:1 },
+    { q:"What does 'persevere' mean?", opts:["To give up easily","To continue despite difficulty","To move quickly","To speak loudly"], ans:1 },
+    { q:"Fill in: She has been studying ___\nthree hours.", opts:["since","for","during","while"], ans:1 },
+    { q:"Which sentence uses the\nsubjunctive correctly?", opts:["I wish I was taller.","I wish I were taller.","I wish I am taller.","I wish I be taller."], ans:1 },
+    { q:"The manager, along with his team,\n___ working late.", opts:["are","were","is","have"], ans:2 },
+    { q:"What is a synonym of 'eloquent'?", opts:["silent","clumsy","articulate","confused"], ans:2 },
+    { q:"Choose the correct option:\nIf I ___ rich, I would travel.", opts:["am","were","will be","would be"], ans:1 },
+    { q:"By the time she arrived, the show\n___ already started.", opts:["was","has","had","did"], ans:2 },
+  ],
+  hard: [
+    { q:"Which sentence is grammatically\ncorrect?", opts:["Whom shall I say is calling?","Who shall I say is calling?","Who shall I say are calling?","Whom shall I say are calling?"], ans:1 },
+    { q:"What does 'sanguine' mean?", opts:["Pessimistic","Optimistic and positive","Aggressive","Timid"], ans:1 },
+    { q:"Choose the correct form:\nHad I known, I ___ earlier.", opts:["would came","would have come","will come","had come"], ans:1 },
+    { q:"'Enervate' most nearly means:", opts:["To energize","To weaken or drain","To irritate","To confuse"], ans:1 },
+    { q:"Which is a dangling modifier?", opts:["Running fast, she won the race.","Running fast, the race was won.","She ran fast to win.","She was running fast."], ans:1 },
+    { q:"The phenomenon ___ observed\nby several scientists.", opts:["has been","have been","was been","had been being"], ans:0 },
+    { q:"Which word best fits?\n'Her ___ remarks left everyone confused.'", opts:["loquacious","pellucid","abstruse","verbose"], ans:2 },
+    { q:"Identify the correct use of\nthe Oxford comma:", opts:["I like cats dogs and fish","I like cats, dogs and fish","I like cats, dogs, and fish","I like cats and dogs and fish"], ans:2 },
+  ],
+};
+
+// ═══════════════════════════════════════════════════════════
+//  ENEMIES
+// ═══════════════════════════════════════════════════════════
+const ENEMIES = [
+  { name:"GRAMMAR SPRITE",   emoji:"👾", maxHp:60,  color:'#00FFAA',
+    dialogue:["* A ghostly Grammar Sprite floats into view!","* It watches your every word..."],
+    taunts:["* You call that English?","* My grammar is better than yours!","* Spell this correctly if you dare!"] },
+  { name:"VOCAB VAMPIRE",    emoji:"🧛", maxHp:80,  color:'#FF88AA',
+    dialogue:["* A VOCAB VAMPIRE rises from the shadows!","* It feeds on wrong answers..."],
+    taunts:["* Your vocabulary is PITIFUL!","* Wrong words taste delicious!","* Can you out-spell a vampire?"] },
+  { name:"SYNTAX SERPENT",   emoji:"🐍", maxHp:100, color:'#88FF44',
+    dialogue:["* A SYNTAX SERPENT hisses menacingly!","* Every mistake makes it stronger!"],
+    taunts:["* Your sentences... they HISS with errors!","* Sssyntax isss everything!","* Feel my linguistic venom!"] },
+  { name:"TENSE TITAN",      emoji:"⚡", maxHp:120, color:'#FFFF44',
+    dialogue:["* The TENSE TITAN crackles into existence!","* Past, present, future... all at once!"],
+    taunts:["* Past! Present! FUTURE! All wrong!","* Time bends to my grammar!","* Your tenses are CHAOTIC!"] },
+  { name:"GRAMMAR OVERLORD", emoji:"👑", maxHp:150, color:'#FF4444',
+    dialogue:["* ⚠ THE GRAMMAR OVERLORD DESCENDS! ⚠","* The final test of English mastery!","* There is no escape from perfect grammar!"],
+    taunts:["* INSOLENT FOOL! Your grammar offends me!","* IMPOSSIBLE! No one can defeat me!","* Your English is an ABOMINATION!"] },
+];
+
+// ═══════════════════════════════════════════════════════════
+//  GAME STATE
+// ═══════════════════════════════════════════════════════════
+let state = {};
+
+function initState() {
+  state = {
+    phase:'title',
+    playerHp:100, playerMaxHp:100,
+    enemyIndex:0, enemyHp:0, enemyMaxHp:0,
+    score:0, combo:0, maxCombo:0,
+    swingPos:0, swingDir:1, swingSpeed:2.5, swingAnim:null,
+    currentQ:null, difficulty:'easy', damageMultiplier:1,
+    answered:false, mercy:0,
+    projectiles:[],
+    soulX:50, soulY:50,
+    dodgeActive:false, dodgeAnim:null,
+    invincible:false, invincTimer:null,
+    usedQuestions:{ easy:new Set(), medium:new Set(), hard:new Set() },
+  };
+}
+
+const $ = id => document.getElementById(id);
+
+// ═══════════════════════════════════════════════════════════
+//  VIEW SYSTEM  ← single source of truth
+// ═══════════════════════════════════════════════════════════
+function showView(name) {
+  ['view-main','view-dodge','view-swing','view-question'].forEach(id => {
+    $(id).style.display = 'none';
+  });
+  if (name) {
+    const el = $(name);
+    el.style.display = 'flex';
+    el.style.flexDirection = 'column';
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+//  GAME FLOW
+// ═══════════════════════════════════════════════════════════
+function startGame() {
+  SFX.menuSel();
+  initState();
+  $('title-screen').style.display = 'none';
+  $('stars-bg').style.display = 'none';
+  $('battle-screen').style.display = 'flex';
+  $('battle-screen').style.flexDirection = 'column';
+  loadEnemy(0);
+}
+
+function restartGame() {
+  SFX.menuSel();
+  $('end-screen').style.display = 'none';
+  $('battle-screen').style.display = 'none';
+  $('stars-bg').style.display = 'block';
+  $('title-screen').style.display = 'flex';
+  $('title-screen').style.flexDirection = 'column';
+  initStars();
+}
+
+function loadEnemy(idx) {
+  const e = ENEMIES[idx];
+  state.enemyIndex = idx;
+  state.enemyHp    = e.maxHp;
+  state.enemyMaxHp = e.maxHp;
+  state.mercy      = 0;
+
+  const sprite = $('enemy-sprite');
+  sprite.textContent = e.emoji;
+  sprite.style.cssText = '';
+  sprite.style.filter = `drop-shadow(0 0 16px ${e.color}88)`;
+
+  $('enemy-name').textContent = `⬛ ${e.name}`;
+  $('enemy-name').style.color = e.color;
+  $('level-badge').textContent = `LV ${idx+1}/5`;
+  $('level-badge').style.color = idx===4 ? '#FF4444' : '#666';
+
+  updateEnemyHp(); updatePlayerHp(); updateScore();
+
+  if (idx===4) {
+    showBossWarning(e.name, () => { SFX.boss(); showDialogue(e.name, e.dialogue, enterPlayerTurn); });
+  } else {
+    showDialogue(e.name, e.dialogue, enterPlayerTurn);
+  }
+}
+
+function showBossWarning(name, cb) {
+  $('bw-title').textContent = '⚠ BOSS APPROACHING ⚠';
+  $('bw-text').textContent  = `The ${name} has arrived!\nPrepare for the ultimate test!`;
+  const bw = $('boss-warning');
+  bw.classList.add('show'); SFX.boss(); screenFlash('#FF000088', 500);
+  setTimeout(()=>{ bw.classList.remove('show'); setTimeout(cb,300); }, 2500);
+}
+
+// ─── UI Updates ────────────────────────────────────────────
+function updateEnemyHp() {
+  const pct  = (state.enemyHp / state.enemyMaxHp) * 100;
+  const fill = $('enemy-hp-fill');
+  fill.style.width = pct + '%';
+  fill.classList.toggle('low', pct < 30);
+}
+
+function updatePlayerHp() {
+  const pct = (state.playerHp / state.playerMaxHp) * 100;
+  $('player-hp-fill').style.width = pct + '%';
+  $('hp-display').textContent = `❤ ${state.playerHp}/${state.playerMaxHp}`;
+  $('hp-display').style.color = pct < 30 ? '#FF4444' : '#00FF66';
+  $('player-hp-track').classList.toggle('pulse', pct < 30);
+}
+
+function updateScore() { $('score-display').textContent = `SCORE: ${state.score}`; }
+
+function updateCombo() {
+  const cd = $('combo-display');
+  if (state.combo > 1) {
+    $('combo-num').textContent = state.combo + 'x';
+    cd.classList.add('show');
+    SFX.combo(state.combo);
+    const sb = $('streak-badge');
+    sb.textContent = `🔥 STREAK x${state.combo}`;
+    sb.style.color = state.combo>=5 ? '#FF4444' : state.combo>=3 ? '#FFD700' : '#FF00FF';
+    sb.classList.add('show');
+  } else {
+    cd.classList.remove('show');
+    if (state.combo===0) $('streak-badge').classList.remove('show');
+  }
+}
+
+// ─── Dialogue ──────────────────────────────────────────────
+function showDialogue(speaker, lines, callback) {
+  showView('view-main');
+  $('dialogue-speaker').textContent = `* ${speaker}`;
+  let i = 0;
+  const show = () => {
+    typeText($('dialogue-text'), lines[i]||'', 25, ()=>{
+      i++;
+      if (i < lines.length) setTimeout(show, 800);
+      else setTimeout(callback, 600);
+    });
+  };
+  show();
+}
+
+function setDialogue(speaker, text) {
+  $('dialogue-speaker').textContent = `* ${speaker}`;
+  typeText($('dialogue-text'), text, 20);
+}
+
+// ─── Player Turn ───────────────────────────────────────────
+function enterPlayerTurn() {
+  state.phase = 'player-turn';
+  stopDodge();
+  showView('view-main');
+  setDialogue('NARRATOR','Choose your action...');
+}
+
+// ─── Fight / Swing ─────────────────────────────────────────
+function initFight() {
+  if (state.phase !== 'player-turn') return;
+  SFX.fight();
+  state.phase = 'swing';
+  showView('view-swing');
+  startSwingAnim();
+}
+
+function startSwingAnim() {
+  state.swingPos   = 0;
+  state.swingDir   = 1;
+  state.swingSpeed = 2.0 + state.enemyIndex * 0.55;
+
+  const animate = () => {
+    if (state.phase !== 'swing') return;
+    state.swingPos += state.swingDir * state.swingSpeed;
+    if (state.swingPos >= 100) { state.swingPos = 100; state.swingDir = -1; }
+    if (state.swingPos <= 0)   { state.swingPos = 0;   state.swingDir =  1; }
+    $('swing-cursor').style.left = state.swingPos + '%';
+    updateSwingHint(state.swingPos);
+    state.swingAnim = requestAnimationFrame(animate);
+  };
+  state.swingAnim = requestAnimationFrame(animate);
+}
+
+function updateSwingHint(pos) {
+  const diff   = getDifficultyFromPos(pos);
+  const colors = { easy:'#00FFAA', medium:'#FFD700', hard:'#FF4444' };
+  const labels = {
+    easy:   '★☆☆ EASY — ×1 DMG',
+    medium: '★★☆ MEDIUM — ×2 DMG',
+    hard:   '★★★ HARD — ×3 DMG',
+  };
+  const badge = $('swing-diff-badge');
+  badge.textContent = labels[diff];
+  badge.style.color = colors[diff];
+}
+
+function getDifficultyFromPos(pos) {
+  const dist = Math.abs(pos - 50);
+  if (dist < 18) return 'easy';
+  if (dist < 32) return 'medium';
+  return 'hard';
+}
+
+function pickQuestion(diff) {
+  const pool = QUESTIONS[diff];
+  const used = state.usedQuestions[diff];
+  let available = pool.map((_,i)=>i).filter(i=>!used.has(i));
+  if (available.length === 0) { used.clear(); available = pool.map((_,i)=>i); }
+  const idx = available[Math.floor(Math.random()*available.length)];
+  used.add(idx);
+  return pool[idx];
+}
+
+function swingStrike() {
+  if (state.phase !== 'swing') return;
+  cancelAnimationFrame(state.swingAnim);
+
+  const pos  = state.swingPos;
+  const diff = getDifficultyFromPos(pos);
+  state.difficulty       = diff;
+  state.currentQ         = pickQuestion(diff);
+  state.damageMultiplier = { easy:1, medium:2, hard:3 }[diff];
+
+  // Strike flash
+  SFX.strike();
+  const sf = $('strike-flash');
+  sf.style.opacity = '0.5';
+  setTimeout(()=>{ sf.style.transition='opacity 0.1s'; sf.style.opacity='0'; }, 50);
+  setTimeout(()=>{ sf.style.transition=''; }, 200);
+
+  // Particles at cursor
+  const track = $('swing-track');
+  const rect  = track.getBoundingClientRect();
+  spawnParticles(rect.left+(pos/100)*rect.width, rect.top+rect.height/2,
+    {easy:'#00FFAA',medium:'#FFD700',hard:'#FF4444'}[diff], 10, 5);
+
+  state.phase    = 'answer';
+  state.answered = false;
+
+  // ── Show question view ──
+  showQuestionView();
+}
+
+// ═══════════════════════════════════════════════════════════
+//  QUESTION VIEW  ← the key fix
+// ═══════════════════════════════════════════════════════════
+const ANSWER_TIME = 12000;
+let answerTimerRAF  = null;
+let answerTimerStart = 0;
+
+function showQuestionView() {
+  showView('view-question');   // switches to question view, keeps enemy/stats visible
+
+  const diff   = state.difficulty;
+  const q      = state.currentQ;
+  const colors = { easy:'#00FFAA', medium:'#FFD700', hard:'#FF4444' };
+  const dc     = colors[diff];
+  const multLbl= { easy:'×1 DMG', medium:'×2 DMG', hard:'×3 DMG' }[diff];
+
+  // Difficulty badge
+  const diffLabel = { easy:'★☆☆ EASY', medium:'★★☆ MEDIUM', hard:'★★★ HARD' }[diff];
+  const badge = $('q-diff-badge');
+  badge.textContent = `${diffLabel} — ${multLbl}`;
+  badge.style.color = dc;
+  badge.style.textShadow = `0 0 8px ${dc}`;
+
+  // Colour the question box border
+  $('q-box').style.borderColor = dc;
+  $('q-box').style.borderBottomColor = dc;
+
+  // Question text
+  $('q-text').textContent = q.q;
+
+  // Answer options — shuffled display order, original index preserved
+  const container = $('answer-opts');
+  container.innerHTML = '';
+  const displayOrder = [0,1,2,3].sort(()=>Math.random()-0.5);
+  displayOrder.forEach((origIdx, displayPos) => {
+    const btn = document.createElement('button');
+    btn.className = 'ans-btn';
+    btn.textContent = `${['A','B','C','D'][displayPos]}. ${q.opts[origIdx]}`;
+    btn.dataset.orig = origIdx;
+    btn.addEventListener('mouseenter', SFX.menuMove);
+    btn.addEventListener('click', () => checkAnswer(origIdx, btn, container));
+    container.appendChild(btn);
+  });
+
+  // Timer bar — CSS transition-based
+  const fill = $('answer-timer-fill');
+  fill.style.transition = 'none';
+  fill.style.width      = '100%';
+  fill.style.background = dc;
+  fill.style.boxShadow  = `0 0 6px ${dc}`;
+  // Force reflow then start countdown
+  void fill.offsetWidth;
+  fill.style.transition = `width ${ANSWER_TIME}ms linear`;
+  fill.style.width      = '0%';
+
+  // Auto-timeout
+  clearTimeout(state._answerTimeout);
+  state._answerTimeout = setTimeout(()=>{
+    if (!state.answered && state.phase==='answer') {
+      state.answered = true;
+      SFX.wrong();
+      flashResult('⏰ TIME UP!', 'wrong-flash', '');
+      highlightCorrect(container);
+      disableAnswerBtns(container);
+      state.combo = 0; updateCombo();
+      setTimeout(()=>enterEnemyTurn(), 1400);
+    }
+  }, ANSWER_TIME);
+}
+
+function highlightCorrect(container) {
+  Array.from(container.children).forEach(b=>{
+    if (parseInt(b.dataset.orig) === state.currentQ.ans) b.classList.add('correct');
+  });
+}
+
+function disableAnswerBtns(container) {
+  Array.from(container.children).forEach(b=>{ b.disabled=true; b.onclick=null; });
+}
+
+function checkAnswer(chosen, btn, container) {
+  if (state.answered) return;
+  state.answered = true;
+
+  // Stop timer
+  clearTimeout(state._answerTimeout);
+  const fill = $('answer-timer-fill');
+  fill.style.transition = 'none';
+  fill.style.width      = '0%';
+
+  // Disable all buttons immediately
+  disableAnswerBtns(container);
+
+  const correct = (state.currentQ.ans === chosen);
+
+  if (correct) {
+    btn.classList.add('correct');
+    const base     = { easy:8, medium:18, hard:30 }[state.difficulty];
+    const finalDmg = base + Math.floor(base * (state.combo * 0.1));
+    state.enemyHp  = Math.max(0, state.enemyHp - finalDmg);
+    state.score   += finalDmg * 10 * (state.combo > 1 ? state.combo : 1);
+    state.combo++;
+    if (state.combo > state.maxCombo) state.maxCombo = state.combo;
+
+    updateEnemyHp(); updateScore(); updateCombo();
+    SFX.correct(); SFX.hitEnemy();
+    showDamageNum(finalDmg, state.combo>2 ? '#FF00FF' : '#FFE000', state.combo>3);
+    flashResult('✓ CORRECT!', 'correct-flash', state.combo>1 ? `COMBO x${state.combo}!` : '');
+    animateEnemy('shake');
+    screenFlash('#FFE00022', 100);
+
+    const sp = $('enemy-sprite');
+    const r  = sp.getBoundingClientRect();
+    spawnExplosion(r.left+r.width/2, r.top+r.height/2, '#FFE000', state.combo>2 ? 30 : 16);
+    if (state.combo>2) spawnTextParticle(r.left+r.width/2, r.top, `x${state.combo} COMBO!`, '#FF00FF');
+
+    setTimeout(()=>{
+      if (state.enemyHp <= 0) defeatEnemy();
+      else enterEnemyTurn();
+    }, 1400);
+  } else {
+    btn.classList.add('wrong');
+    highlightCorrect(container);
+    state.combo = 0; updateCombo();
+    SFX.wrong();
+    flashResult('✗ WRONG!', 'wrong-flash', `Correct: ${state.currentQ.opts[state.currentQ.ans]}`);
+    screenFlash('#FF000022', 100);
+    setTimeout(()=>enterEnemyTurn(), 1500);
+  }
+}
+
+// ─── Enemy Turn / Dodge ────────────────────────────────────
+function enterEnemyTurn() {
+  state.phase = 'enemy-turn';
+  showView('view-dodge');
+
+  const e     = ENEMIES[state.enemyIndex];
+  const taunt = e.taunts[Math.floor(Math.random()*e.taunts.length)];
+  $('dodge-taunt').textContent = taunt;
+
+  resetSoul();
+  startDodge();
+}
+
+function resetSoul() {
+  state.soulX=50; state.soulY=50; placeSoul();
+}
+
+function placeSoul() {
+  const box  = $('soul-box');
+  const soul = $('soul');
+  soul.style.left = (state.soulX/100*(box.offsetWidth -20))+'px';
+  soul.style.top  = (state.soulY/100*(box.offsetHeight-20))+'px';
+}
+
+// Input
+let keysDown = {};
+document.addEventListener('keydown', e=>{
+  keysDown[e.key]=true;
+  if ((e.key===' '||e.key==='Enter') && state.phase==='swing') swingStrike();
+  if ((e.key==='z'||e.key==='Z')     && state.phase==='swing') swingStrike();
+});
+document.addEventListener('keyup', e=>{ keysDown[e.key]=false; });
+
+// Touch for soul box
+let touchStart=null;
+const soulBox = $('soul-box');
+soulBox.addEventListener('touchstart', e=>{ touchStart={x:e.touches[0].clientX,y:e.touches[0].clientY}; },{passive:true});
+soulBox.addEventListener('touchmove',  e=>{
+  if(!touchStart||!state.dodgeActive)return; e.preventDefault();
+  const dx=e.touches[0].clientX-touchStart.x, dy=e.touches[0].clientY-touchStart.y;
+  state.soulX=Math.max(0,Math.min(100,state.soulX+dx*0.18));
+  state.soulY=Math.max(0,Math.min(100,state.soulY+dy*0.18));
+  touchStart={x:e.touches[0].clientX,y:e.touches[0].clientY};
+},{passive:false});
+
+function startDodge() {
+  state.dodgeActive=true;
+  state.projectiles=[];
+  const box=$('soul-box');
+  box.querySelectorAll('.projectile,.proj-word').forEach(p=>p.remove());
+
+  let elapsed=0, lastTime=performance.now(), spawnTimer=0;
+  const duration     = 4500 + state.enemyIndex*300;
+  const spawnInterval= Math.max(350, 950 - state.enemyIndex*120);
+
+  const loop=(now)=>{
+    if(!state.dodgeActive)return;
+    const dt=now-lastTime; lastTime=now; elapsed+=dt; spawnTimer+=dt;
+
+    const speed=0.5;
+    if(keysDown['ArrowLeft']||keysDown['a']||keysDown['A'])  state.soulX-=speed;
+    if(keysDown['ArrowRight']||keysDown['d']||keysDown['D']) state.soulX+=speed;
+    if(keysDown['ArrowUp']||keysDown['w']||keysDown['W'])    state.soulY-=speed;
+    if(keysDown['ArrowDown']||keysDown['s']||keysDown['S'])  state.soulY+=speed;
+    state.soulX=Math.max(0,Math.min(100,state.soulX));
+    state.soulY=Math.max(0,Math.min(100,state.soulY));
+    placeSoul();
+
+    if(spawnTimer>spawnInterval){spawnTimer=0;spawnProjectile();}
+
+    const progress=elapsed/duration;
+    if(progress>0.7) box.style.borderColor=`hsl(${(1-progress)*120},100%,50%)`;
+    else box.style.borderColor='#fff';
+
+    const bw=box.offsetWidth, bh=box.offsetHeight;
+    const sEl=$('soul');
+    const sx=parseFloat(sEl.style.left)+10, sy=parseFloat(sEl.style.top)+10;
+
+    state.projectiles=state.projectiles.filter(p=>{
+      p.x+=p.vx*dt*0.06; p.y+=p.vy*dt*0.06;
+      if(p.el){p.el.style.left=p.x+'px';p.el.style.top=p.y+'px';}
+      const dist=Math.hypot(p.x-sx,p.y-sy);
+      if(!state.invincible&&dist<13){
+        const dmg=6+state.enemyIndex*3;
+        state.playerHp=Math.max(0,state.playerHp-dmg);
+        updatePlayerHp();
+        if(p.el)p.el.remove();
+        SFX.hitPlayer(); shakeBox(); shakeContainer(); screenFlash('#FF000033',120);
+        setInvincible(800);
+        const se=$('soul'); se.classList.add('invincible');
+        box.classList.add('danger');
+        setTimeout(()=>{se.classList.remove('invincible');box.classList.remove('danger');},800);
+        const sr=se.getBoundingClientRect();
+        spawnParticles(sr.left+10,sr.top+10,'#3366FF',8,3);
+        if(state.playerHp<=0){stopDodge();gameOver();return false;}
+        return false;
+      }
+      if(p.x<-40||p.x>bw+40||p.y<-40||p.y>bh+40){SFX.dodge();if(p.el)p.el.remove();return false;}
+      return true;
+    });
+
+    if(elapsed>=duration){stopDodge();enterPlayerTurn();}
+    else state.dodgeAnim=requestAnimationFrame(loop);
+  };
+  state.dodgeAnim=requestAnimationFrame(loop);
+}
+
+function setInvincible(ms){
+  state.invincible=true; clearTimeout(state.invincTimer);
+  state.invincTimer=setTimeout(()=>{state.invincible=false;},ms);
+}
+
+const WORD_PROJ=['THE','AND','BUT','WHY','HOW','WHO','VERB','NOUN','TENSE','SPELL'];
+
+function spawnProjectile(){
+  const box=$('soul-box'), bw=box.offsetWidth, bh=box.offsetHeight;
+  const side=Math.floor(Math.random()*4);
+  let x,y,vx,vy;
+  const speed=1.3+state.enemyIndex*0.35;
+  if(side===0){x=Math.random()*bw;y=-12;vx=(Math.random()-0.5)*speed;vy=speed;}
+  else if(side===1){x=bw+12;y=Math.random()*bh;vx=-speed;vy=(Math.random()-0.5)*speed;}
+  else if(side===2){x=Math.random()*bw;y=bh+12;vx=(Math.random()-0.5)*speed;vy=-speed;}
+  else{x=-12;y=Math.random()*bh;vx=speed;vy=(Math.random()-0.5)*speed;}
+
+  const el=document.createElement('div');
+  if(Math.random()<0.3&&state.enemyIndex>0){
+    el.className='proj-word';
+    const word=WORD_PROJ[Math.floor(Math.random()*WORD_PROJ.length)];
+    el.textContent=word;
+    const colors=['#FF4444','#FF8800','#FF44FF','#00FFFF'];
+    el.style.color=colors[Math.floor(Math.random()*colors.length)];
+    el.style.borderColor=el.style.color;
+  }else{
+    el.className='projectile';
+    const size=state.enemyIndex>=3?12:9;
+    const colors=['#FF4444','#FF8800','#FFFF44','#FF44FF','#44FFFF'];
+    const c=colors[Math.floor(Math.random()*colors.length)];
+    el.style.cssText=`width:${size}px;height:${size}px;background:${c};left:${x}px;top:${y}px;box-shadow:0 0 8px ${c};`;
+  }
+  el.style.left=x+'px'; el.style.top=y+'px';
+  box.appendChild(el);
+  state.projectiles.push({x,y,vx,vy,el});
+}
+
+function stopDodge(){
+  state.dodgeActive=false;
+  cancelAnimationFrame(state.dodgeAnim);
+  $('soul-box').querySelectorAll('.projectile,.proj-word').forEach(p=>p.remove());
+  state.projectiles=[];
+  $('soul-box').style.borderColor='';
+}
+
+function shakeBox(){
+  const sb=$('soul-box');
+  sb.classList.remove('shake'); void sb.offsetWidth; sb.classList.add('shake');
+}
+
+// ─── Act / Mercy ───────────────────────────────────────────
+function doAct(){
+  if(state.phase!=='player-turn')return;
+  SFX.menuSel();
+  const e=ENEMIES[state.enemyIndex];
+  const hints=[
+    `* ${e.name} has ${state.enemyHp}/${state.enemyMaxHp} HP remaining.`,
+    `* ${e.name} is weak against HARD questions! (+3x DMG)`,
+    `* ${e.name} seems frustrated by correct answers.`,
+    `* Your combo is x${state.combo}. Keep it going!`,
+  ];
+  setDialogue('NARRATOR',hints[Math.floor(Math.random()*hints.length)]);
+}
+
+function doMercy(){
+  if(state.phase!=='player-turn')return;
+  SFX.mercy(); state.mercy++;
+  if(state.mercy>=3){
+    setDialogue(ENEMIES[state.enemyIndex].name,'* Fine... you showed mercy. I yield for now.');
+    setTimeout(()=>defeatEnemy(true),1600);
+  }else{
+    setDialogue(ENEMIES[state.enemyIndex].name,`* (${3-state.mercy} more mercy needed to spare me...)`);
+    setTimeout(()=>enterEnemyTurn(),1600);
+  }
+}
+
+// ─── Defeat / Victory / Game Over ─────────────────────────
+function defeatEnemy(mercy=false){
+  cancelAnimationFrame(state.swingAnim); stopDodge();
+  state.phase='end';
+  clearTimeout(state._answerTimeout);
+
+  const e=ENEMIES[state.enemyIndex];
+  if(!mercy) state.score+=500+state.enemyIndex*200;
+  updateScore();
+  animateEnemy('defeat',e.color);
+
+  if(!mercy){
+    SFX.defeat();
+    const sp=$('enemy-sprite'), r=sp.getBoundingClientRect();
+    spawnExplosion(r.left+r.width/2,r.top+r.height/2,e.color,30);
+    screenFlash(e.color+'44',300);
+  }
+
+  showView('view-main');
+  setDialogue('NARRATOR',mercy?`* You showed mercy to ${e.name}...`:`* ${e.name} was defeated!`);
+
+  setTimeout(()=>{
+    const next=state.enemyIndex+1;
+    if(next<ENEMIES.length)loadEnemy(next); else victory();
+  },2200);
+}
+
+function victory(){
+  SFX.victory();
+  $('battle-screen').style.display='none';
+  const es=$('end-screen');
+  es.style.display='flex'; es.style.flexDirection='column';
+  $('end-title').textContent='★ YOU WIN! ★'; $('end-title').style.color='#FFE000';
+  $('end-message').textContent='You defeated all the Grammar Spirits!\nYour English skills are UNSTOPPABLE!';
+  $('end-score').textContent=`FINAL SCORE: ${state.score}`;
+  $('end-combo').textContent=`MAX COMBO: x${state.maxCombo}`;
+  for(let i=0;i<5;i++) setTimeout(()=>{
+    spawnExplosion(canvas.width*(0.2+Math.random()*0.6),canvas.height*(0.1+Math.random()*0.6),
+      ['#FFE000','#FF4444','#00FF88','#FF00FF','#00FFFF'][i],25);
+  },i*300);
+}
+
+function gameOver(){
+  SFX.gameOver(); clearTimeout(state._answerTimeout);
+  $('battle-screen').style.display='none';
+  const es=$('end-screen');
+  es.style.display='flex'; es.style.flexDirection='column';
+  $('end-title').textContent='✝ GAME OVER ✝'; $('end-title').style.color='#FF4444';
+  $('end-message').textContent="You ran out of HP...\nBut don't give up on English!";
+  $('end-score').textContent=`FINAL SCORE: ${state.score}`;
+  $('end-combo').textContent=`MAX COMBO: x${state.maxCombo}`;
+  screenFlash('#FF000088',400);
+}
+
+// ─── Enemy Animation ───────────────────────────────────────
+function animateEnemy(type, color){
+  const el=$('enemy-sprite');
+  if(type==='shake'){
+    el.style.filter='drop-shadow(0 0 20px #FF4444) brightness(2.5)';
+    setTimeout(()=>{ el.style.filter=`drop-shadow(0 0 16px ${ENEMIES[state.enemyIndex].color}88)`; },250);
+  }else if(type==='defeat'){
+    el.style.transition='opacity 1s,transform 1.2s,filter 1s';
+    el.style.opacity='0'; el.style.transform='scale(0.1) rotate(360deg) translateY(-40px)';
+    el.style.filter='drop-shadow(0 0 40px #ffffff) brightness(5)';
+    setTimeout(()=>{ el.style.opacity='1';el.style.transform='';el.style.transition='';el.style.filter=''; },2000);
+  }
+}
+
+// ─── Damage Number ─────────────────────────────────────────
+function showDamageNum(dmg,color='#FFE000',big=false){
+  const area=$('enemy-area'), el=document.createElement('div');
+  el.className='dmg-num'+(big?' big':'');
+  el.textContent='-'+dmg; el.style.color=color;
+  el.style.left=(20+Math.random()*50)+'%'; el.style.top=(20+Math.random()*30)+'%';
+  area.appendChild(el); setTimeout(()=>el.remove(),1000);
+}
+
+// ─── Result Flash ──────────────────────────────────────────
+function flashResult(msg,cls,sub=''){
+  const el=$('result-flash');
+  el.innerHTML=`${msg}${sub?`<div class="flash-sub">${sub}</div>`:''}`;
+  el.className=`show ${cls}`;
+  setTimeout(()=>{ el.className=''; },1100);
+}
+
+// ─── Init ──────────────────────────────────────────────────
+initState();
+</script>
+</body>
+</html>
